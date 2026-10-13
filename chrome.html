@@ -1,0 +1,2351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Fire spinners.</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: rgb(12, 14, 20);
+      color: rgb(242, 230, 209);
+      font-family: "Avenir Next", Avenir, sans-serif;
+      touch-action: manipulation;
+    }
+
+    html, body, body * {
+      -webkit-user-select: none !important;
+      user-select: none !important;
+      -webkit-touch-callout: none !important;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    .hold {
+      position: relative;
+      flex: none;
+      pointer-events: auto;
+      width: min(280px, calc(100% - 48px));
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 22px;
+      border: 1px solid rgba(255, 196, 110, 0.95);
+      border-radius: 999px;
+      background:
+        linear-gradient(180deg, rgb(255, 236, 186) 0%, rgb(255, 148, 42) 38%, rgb(214, 62, 16) 100%);
+      color: rgb(42, 12, 8);
+      font: 500 16px/1 "Avenir Next", Avenir, sans-serif;
+      letter-spacing: 0.12em;
+      text-shadow: 0 1px 0 rgba(255, 228, 180, 0.45);
+      box-shadow:
+        0 10px 24px rgba(0, 0, 0, 0.4),
+        0 0 18px rgba(255, 110, 24, 0.55),
+        inset 0 1px 0 rgba(255, 248, 220, 0.75);
+      cursor: pointer;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      transition: background 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+    }
+
+    .hold svg {
+      display: block;
+      width: 26px;
+      height: 36px;
+      pointer-events: none;
+    }
+
+    .hold[aria-pressed="true"] svg {
+      filter: drop-shadow(0 0 5px rgba(255, 246, 220, 0.95));
+    }
+
+    .hold:hover {
+      border-color: rgb(255, 244, 210);
+    }
+
+    .hold[aria-pressed="true"] {
+      background:
+        linear-gradient(180deg, rgb(255, 250, 230) 0%, rgb(255, 186, 64) 34%, rgb(232, 78, 18) 100%);
+      box-shadow:
+        0 8px 18px rgba(0, 0, 0, 0.42),
+        0 0 28px rgba(255, 120, 24, 0.8),
+        inset 0 1px 0 rgba(255, 252, 236, 0.9);
+    }
+
+    .hold:focus-visible {
+      outline: 2px solid rgb(255, 186, 96);
+      outline-offset: 3px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .dock {
+      position: fixed;
+      z-index: 2;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 0 0 max(18px, env(safe-area-inset-bottom));
+      pointer-events: none;
+    }
+
+    .top-bar {
+      position: relative;
+      box-sizing: border-box;
+      width: 100%;
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 16px;
+      pointer-events: none;
+    }
+
+    .color-choices {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      display: flex;
+      flex: none;
+      flex-wrap: nowrap;
+      justify-content: center;
+      gap: 12px;
+      pointer-events: none;
+      transform: translateX(-50%);
+    }
+
+    .color-choices fieldset {
+      pointer-events: auto;
+      box-sizing: border-box;
+      flex: none;
+      width: max-content;
+      margin: 0;
+      border: 0;
+      padding: 0;
+      background: none;
+    }
+
+    .color-choices legend {
+      float: left;
+      width: 100%;
+      margin: 0 0 5px;
+      padding: 0;
+      text-align: center;
+      white-space: nowrap;
+      font: 600 12px/1.2 -apple-system, BlinkMacSystemFont, "Avenir Next", Avenir, sans-serif;
+      letter-spacing: -0.01em;
+      color: rgba(235, 235, 245, 0.6);
+    }
+
+    .color-choices .options {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      clear: both;
+      padding: 3px 5px;
+      border-radius: 999px;
+      background: rgba(118, 118, 128, 0.36);
+      backdrop-filter: blur(18px) saturate(1.3);
+      -webkit-backdrop-filter: blur(18px) saturate(1.3);
+      box-shadow:
+        inset 0 0 0 0.5px rgba(255, 255, 255, 0.16),
+        0 8px 18px rgba(0, 0, 0, 0.32);
+    }
+
+    .color-choices label {
+      position: relative;
+      z-index: 1;
+      box-sizing: border-box;
+      width: 28px;
+      height: 28px;
+      border: 2px solid transparent;
+      border-radius: 50%;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .color-choices label:has(input[value="red"]) {
+      border-color: rgb(255, 48, 36);
+    }
+
+    .color-choices label:has(input[value="green"]) {
+      border-color: rgb(64, 220, 72);
+    }
+
+    .color-choices label:has(input[value="blue"]) {
+      border-color: rgb(48, 96, 255);
+    }
+
+    .color-choices label:has(input[value="red"]:checked) {
+      background: rgb(255, 48, 36);
+    }
+
+    .color-choices label:has(input[value="green"]:checked) {
+      background: rgb(64, 220, 72);
+    }
+
+    .color-choices label:has(input[value="blue"]:checked) {
+      background: rgb(48, 96, 255);
+    }
+
+    .color-choices input {
+      position: absolute;
+      opacity: 0;
+      inset: 0;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .color-choices label:has(input:focus-visible) {
+      outline: 2px solid rgb(255, 186, 96);
+      outline-offset: 3px;
+    }
+
+    .cycle-controls {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: flex-end;
+      gap: 16px;
+      pointer-events: auto;
+    }
+
+    .ios-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .cycle-caption {
+      font: 600 12px/1.2 -apple-system, BlinkMacSystemFont, "Avenir Next", Avenir, sans-serif;
+      letter-spacing: -0.01em;
+      color: rgba(235, 235, 245, 0.6);
+    }
+
+    .cycle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 36px;
+    }
+
+    .cycle-controls button {
+      box-sizing: border-box;
+      width: 51px;
+      height: 31px;
+      margin: 0;
+      padding: 2px;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(120, 120, 128, 0.48);
+      box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+      cursor: pointer;
+    }
+
+    .cycle-controls button::after {
+      content: "";
+      display: block;
+      width: 27px;
+      height: 27px;
+      border-radius: 50%;
+      background: rgb(255, 255, 255);
+      box-shadow:
+        0 1px 1px rgba(0, 0, 0, 0.06),
+        0 3px 8px rgba(0, 0, 0, 0.28);
+      transform: translateX(0);
+      transition: transform 220ms cubic-bezier(0.2, 0.85, 0.2, 1);
+    }
+
+    .cycle-controls button[aria-checked="true"] {
+      background: rgb(52, 199, 89);
+    }
+
+    .cycle-controls button[aria-checked="true"]::after {
+      transform: translateX(20px);
+    }
+
+    .cycle-controls button:focus-visible,
+    .cycle-duration input:focus-visible {
+      outline: 2px solid rgb(255, 186, 96);
+      outline-offset: 3px;
+    }
+
+    .cycle-duration {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: rgba(235, 235, 245, 0.6);
+      font: 600 12px/1 -apple-system, BlinkMacSystemFont, "Avenir Next", Avenir, sans-serif;
+    }
+
+    .cycle-duration input {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 112px;
+      height: 22px;
+      margin: 0;
+      background: transparent;
+      cursor: pointer;
+      --fill: 50%;
+    }
+
+    .cycle-duration input::-webkit-slider-runnable-track {
+      height: 4px;
+      border-radius: 999px;
+      background: linear-gradient(to right, rgb(52, 199, 89) var(--fill), rgba(120, 120, 128, 0.55) var(--fill));
+    }
+
+    .cycle-duration input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      margin-top: -9px;
+      border: 0;
+      border-radius: 50%;
+      background: rgb(255, 255, 255);
+      box-shadow:
+        0 1px 1px rgba(0, 0, 0, 0.06),
+        0 3px 8px rgba(0, 0, 0, 0.28);
+      cursor: pointer;
+    }
+
+    .cycle-duration input::-moz-range-track {
+      height: 4px;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(120, 120, 128, 0.55);
+    }
+
+    .cycle-duration input::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border: 0;
+      border-radius: 50%;
+      background: rgb(255, 255, 255);
+      box-shadow:
+        0 1px 1px rgba(0, 0, 0, 0.06),
+        0 3px 8px rgba(0, 0, 0, 0.28);
+      cursor: pointer;
+    }
+
+    .cycle-controls button,
+    .cycle-caption,
+    .color-choices legend,
+    .color-choices label {
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    @media (max-width: 1180px) {
+      .dock {
+        gap: 8px;
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+      }
+
+      .top-bar {
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 8px 0;
+        padding-right: max(8px, env(safe-area-inset-right));
+        padding-left: max(8px, env(safe-area-inset-left));
+      }
+
+      .top-bar > .cycle-controls {
+        flex: 1 1 45%;
+        max-width: 50%;
+        order: 1;
+        justify-content: space-evenly;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .cycle-duration {
+        display: none;
+      }
+
+      .ios-group {
+        gap: 3px;
+        min-width: 0;
+      }
+
+      .cycle-caption {
+        font-size: 11px;
+        white-space: nowrap;
+      }
+
+      .color-choices {
+        position: static;
+        left: auto;
+        bottom: auto;
+        order: 2;
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        justify-content: center;
+        transform: none;
+        gap: 6px 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="dock">
+  <div class="top-bar">
+  <div class="cycle-controls">
+    <div class="ios-group">
+      <span class="cycle-caption" id="cycle-caption">cycle rgb</span>
+      <div class="cycle-row">
+        <button id="cycle" type="button" role="switch" aria-checked="false" aria-labelledby="cycle-caption"></button>
+        <label class="cycle-duration">
+          <span>1s</span>
+          <input id="cycle-duration" type="range" min="1" max="5" step="1" value="4" aria-label="Cycle duration, 1 second to 5 seconds">
+          <span>5s</span>
+        </label>
+      </div>
+    </div>
+    <div class="ios-group">
+      <span class="cycle-caption" id="trail-caption">animate light trail</span>
+      <div class="cycle-row">
+        <button id="trail" type="button" role="switch" aria-checked="false" aria-labelledby="trail-caption"></button>
+      </div>
+    </div>
+  </div>
+  <div class="color-choices">
+    <fieldset data-place="0">
+      <legend>Nearest the hands</legend>
+      <div class="options">
+        <label><input type="radio" name="nearest" value="red" checked aria-label="Red"></label>
+        <label><input type="radio" name="nearest" value="green" aria-label="Green"></label>
+        <label><input type="radio" name="nearest" value="blue" aria-label="Blue"></label>
+      </div>
+    </fieldset>
+    <fieldset data-place="1">
+      <legend>Middle of each half</legend>
+      <div class="options">
+        <label><input type="radio" name="middle" value="red" aria-label="Red"></label>
+        <label><input type="radio" name="middle" value="green" checked aria-label="Green"></label>
+        <label><input type="radio" name="middle" value="blue" aria-label="Blue"></label>
+      </div>
+    </fieldset>
+    <fieldset data-place="2">
+      <legend>The two ends</legend>
+      <div class="options">
+        <label><input type="radio" name="ends" value="red" aria-label="Red"></label>
+        <label><input type="radio" name="ends" value="green" aria-label="Green"></label>
+        <label><input type="radio" name="ends" value="blue" checked aria-label="Blue"></label>
+      </div>
+    </fieldset>
+  </div>
+  <div class="cycle-controls">
+    <div class="ios-group">
+      <span class="cycle-caption" id="fire-cycle-caption">cycle fire</span>
+      <div class="cycle-row">
+        <button id="fire-cycle" type="button" role="switch" aria-checked="false" aria-labelledby="fire-cycle-caption"></button>
+        <label class="cycle-duration">
+          <span>1s</span>
+          <input id="fire-duration" type="range" min="1" max="5" step="1" value="1" aria-label="Fire cycle duration, 1 second to 5 seconds">
+          <span>5s</span>
+        </label>
+      </div>
+    </div>
+    <div class="ios-group">
+      <span class="cycle-caption" id="fire-trail-caption">animate light trail</span>
+      <div class="cycle-row">
+        <button id="fire-trail" type="button" role="switch" aria-checked="false" aria-labelledby="fire-trail-caption"></button>
+      </div>
+    </div>
+  </div>
+  </div>
+  <button id="hold" class="hold" type="button" aria-pressed="false" aria-label="Hold"><svg viewBox="0 0 48 64" aria-hidden="true" focusable="false"><ellipse cx="24" cy="48" rx="14" ry="12" fill="rgb(255, 250, 236)"/><ellipse cx="15" cy="38" rx="8" ry="16" fill="rgb(255, 250, 236)"/><ellipse cx="32" cy="34" rx="9" ry="18" fill="rgb(255, 250, 236)"/><ellipse cx="24" cy="30" rx="8" ry="22" fill="rgb(255, 250, 236)"/><ellipse cx="23" cy="16" rx="4" ry="12" fill="rgb(255, 250, 236)"/><ellipse cx="24" cy="46" rx="6" ry="9" fill="rgb(128, 26, 8)"/><ellipse cx="25" cy="36" rx="3.2" ry="10" fill="rgb(128, 26, 8)"/></svg></button>
+  </div>
+  <canvas id="picture" aria-hidden="true"></canvas>
+  <script>
+        // Legs trade places while the tube keeps spinning.
+        // The tube paints a continuous trail, the way a long exposure paints with light.
+    // The stroke is soft. The middle is brighter. The edge feathers out.
+    // The color stays in the stroke. The newest paint is the brightest.
+    // Red, green, and blue stay visible.
+    
+    const silhouette = "rgb(7, 7, 10)"
+    const glowRatio = 0.5
+    const phoneGap = Math.hypot(0.26 * 390, 0.10 * 844)
+    const fastCount = 6
+    const tempo = 0.75
+    const ledMemory = 1620
+    const fireMemory = 1080
+    const spinTurn = (Math.PI * 2) / 8 * tempo
+    const colorChoices = {
+      red: [255, 48, 36],
+      green: [64, 220, 72],
+      blue: [48, 96, 255]
+    }
+    const rgbBands = [colorChoices.red.slice(), colorChoices.green.slice(), colorChoices.blue.slice()]
+    let cycleOn = false
+    let cyclePhase = 0
+    let animateTrail = false
+    let cycleDuration = 4
+    let fireCycleOn = false
+    let firePhase = 0
+    let fireCycleDuration = 1
+    let fireAnimateTrail = false
+    const fireBands = [[255, 230, 150], [255, 170, 40], [255, 90, 20]]
+    const fireStill = [
+      { place: -0.92, color: fireBands[2], strength: 1, size: 0.28 },
+      { place: 0.92, color: fireBands[2], strength: 1, size: 0.28 },
+      { place: -0.5, color: fireBands[1], strength: 1, size: 0.28 },
+      { place: 0.5, color: fireBands[1], strength: 1, size: 0.28 },
+      { place: 0, color: fireBands[0], strength: 1.6, size: 0.34 }
+    ]
+
+    const canvas = document.getElementById("picture")
+    const holdButton = document.getElementById("hold")
+    const context = canvas.getContext("2d")
+    const trailCanvas = document.createElement("canvas")
+    const trailContext = trailCanvas.getContext("2d")
+    const figureCanvas = document.createElement("canvas")
+    const figurePen = figureCanvas.getContext("2d")
+    const lightCanvas = document.createElement("canvas")
+    const lightPen = lightCanvas.getContext("2d", { willReadFrequently: true })
+    const strokeCanvas = document.createElement("canvas")
+    const strokePen = strokeCanvas.getContext("2d", { willReadFrequently: true })
+    const fireCanvas = document.createElement("canvas")
+    const firePen = fireCanvas.getContext("2d")
+    const fireScratch = document.createElement("canvas")
+    const fireScratchPen = fireScratch.getContext("2d")
+    let sheet = context
+
+    let width = 0
+    let height = 0
+    let realtime = null
+    let fast = []
+    let held = false
+    let rush = 0
+    let halfStep = 0
+    let pressCount = 0
+    const settleFrames = 6
+    let lastStamp = 0
+    let leftover = 0
+    const pointers = new Set()
+
+    function unit() {
+      if (phoneGap < 1) return 1
+      return Math.hypot(0.26 * width, 0.10 * height) / phoneGap
+    }
+
+    const company = [
+      { chain: false },
+      { chain: true },
+      { chain: false },
+      { chain: true },
+      { chain: false },
+      { chain: true }
+    ]
+    const orbitWide = 0.58
+    const orbitHigh = 0.5
+
+    function figureScale(amount) {
+      return amount * unit()
+    }
+
+    function orbitScale(angle) {
+      return figureScale(1.6) * (1 + 0.25 * Math.sin(angle))
+    }
+
+    function bodyRise(phase) {
+      return (1 - Math.abs(Math.cos(phase))) * 3.4
+    }
+
+    function advanceStep(phase, distance, scale) {
+      const cycle = Math.max(36 * scale, 1)
+      const raw = distance / cycle * Math.PI * 2
+      return phase + Math.min(raw, 0.42 * tempo)
+    }
+
+    function orbitHand(feetX, feetY, angle, turn, scale, phase) {
+      const rise = bodyRise(phase)
+      const tx = -Math.sin(angle) * turn
+      const ty = Math.cos(angle) * turn
+      const len = Math.hypot(tx, ty) || 1
+      return {
+        x: feetX + (tx / len) * 14 * scale,
+        y: feetY + (-52 - rise) * scale
+      }
+    }
+
+    function handOf(feetX, feetY, facing, scale, phase, lean, follow) {
+      const rise = bodyRise(phase)
+      const shift = lean || 0
+      const lift = follow || 0
+      return {
+        x: feetX + (14 + shift * 0.25) * scale * facing,
+        y: feetY + (-52 - rise - lift) * scale
+      }
+    }
+
+    function tubeCenter(phase, lean, follow) {
+      const rise = bodyRise(phase)
+      const shift = lean || 0
+      const lift = follow || 0
+      return {
+        x: 10 + shift * 0.25,
+        y: -34 - rise - lift
+      }
+    }
+
+    function handsOnTube(spin, facing, lean, follow, phase) {
+      const center = tubeCenter(phase, lean, follow)
+      const along = 6
+      const dir = facing || 1
+      const dx = Math.cos(spin) * along / dir
+      const dy = Math.sin(spin) * along
+      return [
+        { x: center.x + dx, y: center.y + dy },
+        { x: center.x - dx, y: center.y - dy }
+      ]
+    }
+
+    function remember(list, pose, limit) {
+      list.push(pose)
+      if (list.length > limit) list.splice(0, list.length - limit)
+    }
+
+    let orbitNow = null
+
+    function phoneStage() {
+      const dock = document.querySelector(".dock")
+      const floor = (dock ? dock.getBoundingClientRect().top : height) - 4
+      const crowdScale = figureScale(1.6) * 0.75
+      const topFeet = 6 + 56 * crowdScale
+      const bottomFeet = Math.max(topFeet + 240, floor - 2)
+      return { topFeet, bottomFeet }
+    }
+
+    function orbitFrame() {
+      if (orbitNow) return orbitNow
+      const feetY = realtime && realtime.feetY ? realtime.feetY : height * 0.66
+      const narrow = window.matchMedia("(max-width: 1180px)").matches
+      if (!narrow) {
+        orbitNow = {
+          centerX: realtime ? realtime.x : width * 0.31,
+          centerY: feetY + height * 0.06,
+          radiusX: orbitWide * width,
+          radiusY: orbitHigh * height
+        }
+        return orbitNow
+      }
+      const stage = phoneStage()
+      const centerY = realtime && realtime.feetY ? realtime.feetY : (stage.topFeet + stage.bottomFeet) / 2
+      const radiusY = Math.max(140, Math.min(centerY - stage.topFeet, stage.bottomFeet - centerY))
+      orbitNow = {
+        centerX: realtime ? realtime.x : width * 0.5,
+        centerY,
+        radiusX: Math.max(150, width * 0.44),
+        radiusY
+      }
+      return orbitNow
+    }
+
+    function orbitRadiusX() {
+      return orbitFrame().radiusX
+    }
+
+    function crowdY(angle) {
+      const frame = orbitFrame()
+      return frame.centerY + Math.sin(angle) * frame.radiusY
+    }
+
+    function aroundPoint(angle) {
+      const frame = orbitFrame()
+      return {
+        x: frame.centerX + Math.cos(angle) * frame.radiusX,
+        y: frame.centerY + Math.sin(angle) * frame.radiusY,
+        radiusX: frame.radiusX
+      }
+    }
+
+    function memberOf(index) {
+      const slot = company[index]
+      const angle = index * (Math.PI * 2 / company.length)
+      const spot = aroundPoint(angle)
+      return {
+        x: spot.x,
+        y: spot.y,
+        angle,
+        chain: slot.chain,
+        turn: 1,
+        beat: 1,
+        facing: 1,
+        scale: orbitScale(angle),
+        spin: index * 1.7,
+        phase: index * 0.9,
+        lift: 0,
+        stepLeft: 0,
+        holdLeft: 10,
+        footAngle: angle,
+        footX: spot.x,
+        footY: spot.y,
+        footCenterX: spot.x - Math.cos(angle) * orbitRadiusX(),
+        footCenterY: 0,
+        goalX: spot.x,
+        goalY: spot.y,
+        mannerLeft: 0,
+        mannerSpan: 36,
+        phraseOffset: index * 0.8,
+        phraseSpin: 1,
+        fire: []
+      }
+    }
+
+    function seed() {
+      realtime = {
+        x: width * 0.31,
+        facing: 1,
+        spin: 0,
+        phase: 0,
+        tube: [],
+        body: []
+      }
+      fast = []
+      for (let index = 0; index < fastCount; index += 1) {
+        fast.push(memberOf(index))
+      }
+    }
+
+    function scalePose(pose, sx, sy) {
+      pose.x *= sx
+      pose.y *= sy
+      if (pose.handX != null) {
+        pose.handX *= sx
+        pose.handY *= sy
+      }
+    }
+
+    function fit() {
+      const nextWidth = Math.min(window.innerWidth, document.documentElement.clientWidth)
+      const nextHeight = Math.min(window.innerHeight, document.documentElement.clientHeight)
+      const ratio = Math.min(window.devicePixelRatio || 1, 1.5)
+      const glowWidth = Math.max(1, Math.floor(nextWidth * glowRatio))
+      const glowHeight = Math.max(1, Math.floor(nextHeight * glowRatio))
+      canvas.width = Math.max(1, Math.floor(nextWidth * ratio))
+      canvas.height = Math.max(1, Math.floor(nextHeight * ratio))
+      canvas.style.width = nextWidth + "px"
+      canvas.style.height = nextHeight + "px"
+      context.setTransform(ratio, 0, 0, ratio, 0, 0)
+      trailCanvas.width = glowWidth
+      trailCanvas.height = glowHeight
+      trailContext.setTransform(glowRatio, 0, 0, glowRatio, 0, 0)
+      fireCanvas.width = glowWidth
+      fireCanvas.height = glowHeight
+      fireScratch.width = glowWidth
+      fireScratch.height = glowHeight
+      firePen.setTransform(glowRatio, 0, 0, glowRatio, 0, 0)
+      fireScratchPen.setTransform(glowRatio, 0, 0, glowRatio, 0, 0)
+
+      if (width > 1 && height > 1 && realtime) {
+        const sx = nextWidth / width
+        const sy = nextHeight / height
+        realtime.x *= sx
+        for (const pose of realtime.tube) scalePose(pose, sx, sy)
+        for (const pose of realtime.body) scalePose(pose, sx, sy)
+        for (const person of fast) {
+          person.x *= sx
+          person.y *= sy
+          person.lift = (person.lift || 0) * sy
+          if (person.footX != null) {
+            person.footX *= sx
+            person.footY *= sy
+            person.goalX *= sx
+            person.goalY *= sy
+            person.footCenterX *= sx
+            person.footCenterY *= sy
+            if (person.goalCenterX != null) {
+              person.goalCenterX *= sx
+              person.goalCenterY *= sy
+            }
+          }
+          for (const pose of person.fire) scalePose(pose, sx, sy)
+        }
+      }
+
+      width = nextWidth
+      height = nextHeight
+      if (realtime == null && width > 1 && height > 1) seed()
+    }
+
+    function advanceRealtime() {
+      const odd = pressCount % 2 === 1
+      const travelScale = held ? (odd ? 2 * 1.42 : 0.5) : 1
+      const speed = (width * 0.76) / (9 * 30) * tempo * travelScale
+      if (realtime.facing > 0) {
+        realtime.x += speed
+        if (realtime.x > width * 0.75) realtime.facing = -1
+      } else {
+        realtime.x -= speed
+        if (realtime.x < width * 0.25) realtime.facing = 1
+      }
+      let feetY = height * 0.66
+      if (window.matchMedia("(max-width: 1180px)").matches) {
+        const stage = phoneStage()
+        feetY = (stage.topFeet + stage.bottomFeet) / 2
+      }
+      const scale = figureScale(1.68)
+      realtime.phase = advanceStep(realtime.phase, speed, scale)
+      const spinNow = realtime.spin + spinTurn
+      const pelvis = Math.sin(spinNow * 0.16)
+      const chestWave = Math.sin(spinNow * 0.16 - 0.85)
+      realtime.sway = pelvis * 2.8
+      realtime.follow = chestWave * 1.2
+      realtime.pull = (1 - chestWave) * 0.5
+      const center = tubeCenter(realtime.phase, realtime.sway, realtime.follow)
+      const hand = {
+        x: realtime.x + center.x * scale * realtime.facing,
+        y: feetY + center.y * scale
+      }
+      if (held) {
+        const flashes = 18
+        const previous = realtime.tube.length ? realtime.tube[realtime.tube.length - 1] : null
+        const join = Math.max(24 * scale, speed * 3)
+        const near = previous && Math.hypot(previous.x - hand.x, previous.y - hand.y) <= join
+        const fromX = near ? previous.x : hand.x
+        const fromY = near ? previous.y : hand.y
+        const marks = trailSnapshot()
+        for (let sample = 1; sample <= flashes; sample += 1) {
+          const t = sample / flashes
+          remember(realtime.tube, {
+            x: fromX + (hand.x - fromX) * t,
+            y: fromY + (hand.y - fromY) * t,
+            angle: realtime.spin + spinTurn * t,
+            marks
+          }, ledMemory)
+        }
+      }
+      realtime.spin += spinTurn
+      realtime.feetY = feetY
+      realtime.hand = hand
+      if (held && odd) {
+        remember(realtime.body, {
+          x: realtime.x,
+          y: feetY,
+          facing: realtime.facing,
+          phase: realtime.phase,
+          sway: realtime.sway,
+          follow: realtime.follow,
+          pull: realtime.pull,
+          spin: realtime.spin
+        }, 12)
+      } else if (realtime.body.length > 0) {
+        realtime.body.length = 0
+      }
+    }
+
+    function futureCenter(frames) {
+      if (window.matchMedia("(max-width: 1180px)").matches) {
+        const frame = orbitFrame()
+        return { x: frame.centerX, y: frame.centerY }
+      }
+      const odd = pressCount % 2 === 1
+      const travelScale = held ? (odd ? 2 * 1.42 : 0.5) : 1
+      const speed = (width * 0.76) / (9 * 30) * tempo * travelScale
+      let x = realtime.x
+      let facing = realtime.facing
+      const whole = Math.max(0, Math.round(frames))
+      for (let frame = 0; frame < whole; frame += 1) {
+        if (facing > 0) {
+          x += speed
+          if (x > width * 0.75) facing = -1
+        } else {
+          x -= speed
+          if (x < width * 0.25) facing = 1
+        }
+      }
+      const feetY = realtime && realtime.feetY ? realtime.feetY : height * 0.66
+      return { x, y: feetY }
+    }
+
+    function predictSpot(person, angle, anglePerPiece, bodyPerPiece) {
+      let spot = aroundPoint(angle)
+      const speed = Math.max(bodyPerPiece, 0.4)
+      for (let pass = 0; pass < 3; pass += 1) {
+        const gap = Math.hypot(spot.x - person.x, spot.y - person.y)
+        const pieces = Math.min(45, gap / speed)
+        const center = futureCenter(pieces / 3)
+        const ahead = angle + anglePerPiece * pieces
+        spot = {
+          x: center.x + Math.cos(ahead) * orbitRadiusX(),
+          y: crowdY(ahead)
+        }
+      }
+      return spot
+    }
+
+    function spinningPhrase(person) {
+      const turns = Math.abs(person.spin) / (Math.PI * 2)
+      const beat = Math.floor(turns / 4 + (person.phraseOffset || 0)) % 5
+      return ["follow", "oppose", "pivot", "travel", "stall"][beat]
+    }
+
+    function strideFor(speed, walkSpeed) {
+      const effort = speed / Math.max(walkSpeed, 0.001)
+      return Math.min(1.5, 0.85 + effort * 0.45)
+    }
+
+    function stepToward(person, spot, scale, stepScale, rush) {
+      const dx = spot.x - person.x
+      const dy = spot.y - person.y
+      const gap = Math.hypot(dx, dy)
+      const far = Math.max(340, 156 * scale)
+      const wide = Math.abs(dx) >= Math.abs(dy) * 3
+      const fastNeed = rush > 0.35 || stepScale < 0.55
+      const hopping = person.manner === "jumping" && person.mannerLeft > 0
+      if (hopping) {
+              } else if (gap > far && wide && fastNeed) {
+        person.manner = "jumping"
+        person.mannerSpan = 21
+        person.mannerLeft = 21
+        person.phraseSpin = 1.08
+      } else {
+        person.manner = spinningPhrase(person)
+        person.phraseSpin = person.manner === "stall" ? 0.5 : person.manner === "pivot" ? 1.12 : 1
+      }
+      const ordinary = (Math.PI * 2) / (16 * 30) * orbitRadiusX() / 3
+      const walkSpeed = ordinary * stepScale
+      const hurry = 1 + rush * 2.4
+      const span = person.mannerSpan || 1
+      const turns = Math.abs(person.spin) / (Math.PI * 2)
+      const within = (turns / 4 + (person.phraseOffset || 0)) % 1
+      let speed = 0
+      if (person.manner === "jumping") {
+        const t = Math.min(1, Math.max(0, 1 - person.mannerLeft / span))
+        person.lift = Math.sin(Math.PI * t) * 26 * scale
+        speed = Math.min(gap, walkSpeed * 3.2 * hurry)
+      } else if (person.manner === "pivot") {
+        person.lift = Math.sin(Math.PI * within) * 12 * scale
+        if (within > 0.48 && within < 0.62 && !person.turned) {
+          person.facing *= -1
+          person.turned = true
+        }
+        if (within < 0.2) person.turned = false
+        speed = Math.min(gap, walkSpeed * 0.3)
+      } else if (person.manner === "travel") {
+        person.lift *= 0.7
+        speed = Math.min(gap, walkSpeed)
+      } else if (person.manner === "stall") {
+        person.lift *= 0.8
+        speed = Math.min(gap, walkSpeed * 0.35)
+      } else if (person.manner === "oppose") {
+        person.lift *= 0.75
+        speed = Math.min(gap, walkSpeed * 0.55)
+      } else {
+        person.lift *= 0.75
+        speed = Math.min(gap, walkSpeed * 0.55)
+      }
+      const sway = person.manner === "oppose" ? Math.PI : 0
+      person.phase = person.spin * 0.25 + sway
+      person.stride = strideFor(speed, walkSpeed)
+      if (gap > 0.001 && speed > 0) {
+        person.x += (dx / gap) * speed
+        person.y += (dy / gap) * speed
+        if (person.manner === "travel" && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8 * scale) {
+          person.facing = dx > 0 ? 1 : -1
+        }
+      }
+      if (person.manner === "jumping") person.mannerLeft -= 1
+    }
+
+    function footAhead(angle, framesAhead) {
+      const center = futureCenter(framesAhead)
+      return {
+        x: center.x + Math.cos(angle) * orbitRadiusX(),
+        y: crowdY(angle)
+      }
+    }
+
+    function grahamBody(person) {
+      const offset = person.phraseOffset || 0
+      const breath = Math.sin(person.spin * 0.12 - 0.85 + offset)
+      const open = 0.18 + (1 - breath) * 0.28
+      if (person.phrase === "flow") {
+        person.pull = open
+        person.lean = Math.sin(person.spin * 0.12 + offset) * 2.4
+        return
+      }
+      const sway = Math.sin(person.spin * 0.12 + offset) * 2.4
+      if (person.phrase === "step") {
+        const t = person.stepT || 0
+        const soft = Math.sin(t * Math.PI)
+        const shaped = soft * soft
+        person.pull = open + (0.82 - open) * shaped
+        const travel = (person.facing || 1) * 1.6
+        person.lean = sway * (1 - shaped) + travel * shaped
+        return
+      }
+      person.pull = open
+      person.lean = sway
+    }
+
+    function stepAlongTheOval(person, anglePerFrame, scale, stepScale) {
+      const sway = person.manner === "oppose" ? Math.PI : 0
+      const per = Math.abs(anglePerFrame)
+      if (per > 0.08) {
+        const onOval = aroundPoint(person.angle)
+        person.x = onOval.x
+        person.y = onOval.y
+        person.footX = person.x
+        person.footY = person.y
+        person.footAngle = person.angle
+        const center = futureCenter(0)
+        person.footCenterX = center.x
+        person.footCenterY = center.y
+        person.stepLeft = 0
+        person.holdLeft = 0
+        person.lift = 0
+        person.phrase = "flow"
+        person.manner = spinningPhrase(person)
+        person.phraseSpin = person.manner === "stall" ? 0.5 : person.manner === "pivot" ? 1.12 : 1
+        person.phase = person.spin * 0.25 + sway
+        const nudged = aroundPoint(person.angle + (anglePerFrame < 0 ? -per : per))
+        const arc = Math.hypot(nudged.x - onOval.x, nudged.y - onOval.y)
+        const ordinary = (Math.PI * 2) / (16 * 30) * orbitRadiusX()
+        person.stride = strideFor(arc, ordinary * Math.max(stepScale, 0.25))
+        const travelX = -Math.sin(person.angle) * anglePerFrame
+        if (Math.abs(travelX) > 0.0001) person.facing = travelX > 0 ? 1 : -1
+        return
+      }
+      if (person.stepLeft > 0) {
+        person.stepLeft -= 1
+        const span = person.stepSpan || 1
+        const t = 1 - person.stepLeft / span
+        const ease = t * t * (3 - 2 * t)
+        const angle = person.footAngle + (person.goalAngle - person.footAngle) * ease
+        const centerX = person.footCenterX + (person.goalCenterX - person.footCenterX) * ease
+        const centerY = person.footCenterY + (person.goalCenterY - person.footCenterY) * ease
+        person.x = centerX + Math.cos(angle) * orbitRadiusX()
+        person.y = crowdY(angle)
+        person.lift = 0
+        person.phrase = "step"
+        person.stepT = t
+        person.manner = "travel"
+        person.phraseSpin = 1
+        person.phase = (person.stepPhase || 0) + ease * Math.PI
+        const gap = Math.hypot(person.goalX - person.footX, person.goalY - person.footY)
+        const ordinary = (Math.PI * 2) / (16 * 30) * orbitRadiusX()
+        const travelStride = strideFor(gap / span, ordinary * Math.max(stepScale, 0.25))
+        const fromStride = person.stepStride == null ? 0.9 : person.stepStride
+        person.stride = fromStride + (travelStride - fromStride) * ease
+        const travelX = -Math.sin(angle) * (person.goalAngle - person.footAngle)
+        if (Math.abs(travelX) > 0.0001) {
+          person.facing = travelX > 0 ? 1 : -1
+          person.turned = false
+        }
+        if (person.stepLeft <= 0) {
+          person.x = person.goalX
+          person.y = person.goalY
+          person.footX = person.x
+          person.footY = person.y
+          person.footAngle = person.goalAngle
+          person.footCenterX = person.goalCenterX
+          person.footCenterY = person.goalCenterY
+          person.lift = 0
+          person.holdLeft = person.holdSpan
+        }
+        return
+      }
+      person.x = person.footX
+      person.y = person.footY
+      person.lift = 0
+      person.phrase = "hold"
+      person.manner = spinningPhrase(person)
+      person.phraseSpin = person.manner === "stall" ? 0.5 : person.manner === "pivot" ? 1.12 : 1
+      if (person.manner === "pivot") {
+        const turns = Math.abs(person.spin) / (Math.PI * 2)
+        const within = (turns / 4 + (person.phraseOffset || 0)) % 1
+        if (within > 0.48 && within < 0.62 && !person.turned) {
+          person.facing *= -1
+          person.turned = true
+        }
+        if (within < 0.2) person.turned = false
+      }
+      if (person.holdLeft > 0) {
+        person.holdLeft -= 1
+        return
+      }
+      const strideAngle = 0.36
+      const fastArc = per > 0.08
+      const slowStep = stepScale < 0.55
+      const cycle = Math.max(fastArc ? 6 : 16, Math.round(strideAngle / per))
+      let holdFrames = Math.max(fastArc ? 2 : 5, Math.round(cycle * 0.3))
+      if (slowStep && !fastArc) holdFrames = 6
+      const moveFrames = Math.max(fastArc ? 3 : 8, cycle - holdFrames)
+      const arcLimit = fastArc ? 1.15 : strideAngle * 1.15
+      const deltaRaw = anglePerFrame * (holdFrames + moveFrames)
+      const sign = deltaRaw < 0 ? -1 : 1
+      const delta = sign * Math.min(arcLimit, Math.abs(deltaRaw))
+      const goalCenter = futureCenter(moveFrames)
+      person.goalAngle = person.footAngle + delta
+      person.goalCenterX = goalCenter.x
+      person.goalCenterY = goalCenter.y
+      person.goalX = goalCenter.x + Math.cos(person.goalAngle) * orbitRadiusX()
+      person.goalY = crowdY(person.goalAngle)
+      person.stepSpan = moveFrames
+      person.holdSpan = holdFrames
+      person.stepLeft = moveFrames
+      person.stepPhase = person.phase || 0
+      person.stepStride = person.stride == null ? 0.9 : person.stride
+    }
+
+    function advanceFast() {
+      const odd = pressCount % 2 === 1
+      if (held) {
+        if (odd) {
+          rush = 0
+          halfStep = 1
+        } else {
+          rush = 1
+          halfStep = 0
+        }
+      } else {
+        if (rush > 0) rush = Math.max(0, rush - 1 / settleFrames)
+        if (halfStep > 0) halfStep = Math.max(0, halfStep - 1 / settleFrames)
+      }
+      const ordinaryPace = 0.45
+      const fastPace = 3.8 * 3
+      const halfPace = ordinaryPace * 0.5
+      const pace = ordinaryPace + (fastPace - ordinaryPace) * rush + (halfPace - ordinaryPace) * halfStep
+      const pieces = 3
+      const ordinaryLoop = 16 * 30
+      for (const person of fast) {
+        const paceRatio = pace / ordinaryPace
+        const spinRate = person.chain ? -1.65 : 1
+        const anglePerFrame = person.turn * (Math.PI * 2) / ordinaryLoop * paceRatio
+        const fromX = person.x
+        const fromY = person.y
+        const fromLift = person.lift || 0
+        person.angle += anglePerFrame
+        const scale = orbitScale(person.angle)
+        person.scale = scale
+        const stepScale = 1 + (0.25 - 1) * halfStep
+        stepAlongTheOval(person, anglePerFrame, scale, stepScale)
+        const spinScale = 1 + (0.5 - 1) * halfStep
+        const moved = Math.hypot(person.x - fromX, person.y - fromY)
+        const spinShift = (1 + Math.min(0.22, moved / Math.max(16 * scale, 1)) * Math.sin(person.phase)) * (person.phraseSpin || 1)
+        const spinStep = spinTurn * spinRate * spinScale * spinShift
+        const spinBefore = person.spin
+        person.spin += spinStep
+        grahamBody(person)
+        if (held || rush > 0 || halfStep > 0) {
+          const trailSamples = 24
+          const fireMarks = fireTrailSnapshot()
+          for (let sample = 1; sample <= trailSamples; sample += 1) {
+            const t = sample / trailSamples
+            const x = fromX + (person.x - fromX) * t
+            const yGround = fromY + (person.y - fromY) * t
+            const lift = fromLift + ((person.lift || 0) - fromLift) * t
+            const y = yGround - lift
+            const sp = spinBefore + spinStep * t
+            const hand = handOf(x, y, person.facing, scale, person.phase, person.lean)
+            const propLength = (person.chain ? 22 : 24) * scale
+            remember(person.fire, {
+              x,
+              y,
+              facing: person.facing,
+              phase: person.phase,
+              scale,
+              angle: sp,
+              handX: hand.x,
+              handY: hand.y,
+              length: propLength,
+              chain: person.chain,
+              marks: person.chain ? null : fireMarks
+            }, fireMemory)
+          }
+        }
+      }
+    }
+
+    function decayOldest(list, drop) {
+      if (list.length === 0) return
+      list.splice(0, Math.min(drop, list.length))
+    }
+
+    function step() {
+      orbitNow = null
+      if (width <= 1 || height <= 1 || realtime == null) return
+      advanceRealtime()
+      advanceFast()
+      if (cycleOn) cyclePhase += 3 / (cycleDuration * 30)
+      if (fireCycleOn) firePhase += 3 / (fireCycleDuration * 30)
+      if (!held) decayOldest(realtime.tube, 18)
+      const fireDrop = held ? 12 : 36
+      for (const person of fast) decayOldest(person.fire, fireDrop)
+    }
+
+    function drawSky() {
+      const sky = context.createLinearGradient(0, 0, 0, height)
+      sky.addColorStop(0, "rgb(10, 12, 18)")
+      sky.addColorStop(0.42, "rgb(20, 24, 38)")
+      sky.addColorStop(0.62, "rgb(78, 68, 78)")
+      sky.addColorStop(0.8, "rgb(18, 16, 20)")
+      sky.addColorStop(1, "rgb(8, 8, 12)")
+      context.fillStyle = sky
+      context.fillRect(0, 0, width, height)
+    }
+
+    function drawBands(x1, y1, x2, y2, bands, alpha, lineWidth) {
+      for (let index = 0; index < bands.length; index += 1) {
+        const start = index / bands.length
+        const end = (index + 1) / bands.length
+        const color = bands[index]
+        sheet.beginPath()
+        sheet.moveTo(x1 + (x2 - x1) * start, y1 + (y2 - y1) * start)
+        sheet.lineTo(x1 + (x2 - x1) * end, y1 + (y2 - y1) * end)
+        sheet.strokeStyle = "rgba(" + color[0] + "," + color[1] + "," + color[2] + "," + alpha + ")"
+        sheet.lineWidth = lineWidth
+        sheet.lineCap = "butt"
+        sheet.stroke()
+      }
+    }
+
+    const glowSprites = new Map()
+
+    function glowSprite(color, radius, feather) {
+      const key = color[0] + "," + color[1] + "," + color[2] + ":" + radius + ":" + (feather ? "feather" : "band")
+      const cached = glowSprites.get(key)
+      if (cached) return cached
+      const size = radius * 2
+      const sprite = document.createElement("canvas")
+      sprite.width = size
+      sprite.height = size
+      const pen = sprite.getContext("2d")
+      const glow = pen.createRadialGradient(radius, radius, 0, radius, radius, radius)
+      const body = color[0] + "," + color[1] + "," + color[2]
+      const hot = Math.round(color[0] * 0.35 + 255 * 0.65) + "," + Math.round(color[1] * 0.35 + 255 * 0.65) + "," + Math.round(color[2] * 0.35 + 255 * 0.65)
+      if (feather) {
+        glow.addColorStop(0, "rgba(" + hot + ",1)")
+        glow.addColorStop(0.06, "rgba(" + hot + ",0.8)")
+        glow.addColorStop(0.16, "rgba(" + body + ",0.38)")
+        glow.addColorStop(0.32, "rgba(" + body + ",0.1)")
+        glow.addColorStop(1, "rgba(" + body + ",0)")
+      } else {
+        glow.addColorStop(0, "rgba(" + hot + ",1)")
+        glow.addColorStop(0.42, "rgba(" + body + ",0.72)")
+        glow.addColorStop(0.7, "rgba(" + body + ",0.3)")
+        glow.addColorStop(1, "rgba(" + body + ",0)")
+      }
+      pen.fillStyle = glow
+      pen.fillRect(0, 0, size, size)
+      glowSprites.set(key, sprite)
+      return sprite
+    }
+
+    function lightIsForward(angle, place, facing) {
+      const across = Math.cos(angle) * place * (facing || 1)
+      if (Math.abs(across) < 0.2) return true
+      return across > 0
+    }
+
+    function quantizeColor(color) {
+      return [
+        Math.round(color[0] / 8) * 8,
+        Math.round(color[1] / 8) * 8,
+        Math.round(color[2] / 8) * 8
+      ]
+    }
+
+    function trailSnapshot() {
+      if (cycleOn) {
+        const marks = []
+        const count = 8
+        for (let index = 0; index <= count; index += 1) {
+          const place = -1 + (2 * index / count)
+          marks.push({
+            place,
+            color: quantizeColor(flowColor(Math.abs(place))),
+            strength: 1,
+            feather: Math.abs(place) < 0.08
+          })
+        }
+        return marks
+      }
+      return [
+        { place: -0.92, color: rgbBands[2].slice(), strength: 1, feather: false },
+        { place: 0.92, color: rgbBands[2].slice(), strength: 1, feather: false },
+        { place: -0.5, color: rgbBands[1].slice(), strength: 1.35, feather: false },
+        { place: 0.5, color: rgbBands[1].slice(), strength: 1.35, feather: false },
+        { place: 0, color: rgbBands[0].slice(), strength: 1, feather: true }
+      ]
+    }
+
+    function paintStoredTrail(poses, length, bloom, forward) {
+      const previous = sheet.globalCompositeOperation
+      const facing = realtime ? realtime.facing : 1
+      const last = poses.length - 1
+      for (let index = 1; index < poses.length; index += 2) {
+        const pose = poses[index]
+        if (!pose.marks) continue
+        const along = index / last
+        for (let mark = 0; mark < pose.marks.length; mark += 1) {
+          const item = pose.marks[mark]
+          if (forward != null && lightIsForward(pose.angle, item.place, facing) !== forward) continue
+          const radius = item.feather ? Math.round(bloom * 1.8) : bloom
+          const sprite = glowSprite(item.color, radius, item.feather)
+          sheet.globalCompositeOperation = item.feather ? "lighter" : previous
+          const amount = item.feather ? 0.06 + 0.09 * Math.pow(along, 1.15) : 0.06 + 0.14 * Math.pow(along, 1.15)
+          sheet.globalAlpha = amount * item.strength * 1.05
+          const x = pose.x + Math.cos(pose.angle) * length * item.place
+          const y = pose.y + Math.sin(pose.angle) * length * item.place
+          sheet.drawImage(sprite, x - radius, y - radius)
+        }
+      }
+      sheet.globalAlpha = 1
+      sheet.globalCompositeOperation = previous
+    }
+
+    function paintTrail(poses, length, place, color, radius, strength, feather, forward) {
+      const sprite = glowSprite(color, radius, feather)
+      const previous = sheet.globalCompositeOperation
+      const facing = realtime ? realtime.facing : 1
+      if (feather) sheet.globalCompositeOperation = "lighter"
+      for (let index = 1; index < poses.length; index += 2) {
+        const pose = poses[index]
+        if (forward != null && lightIsForward(pose.angle, place, facing) !== forward) continue
+        const along = index / (poses.length - 1)
+        const amount = feather ? 0.06 + 0.09 * Math.pow(along, 1.15) : 0.06 + 0.14 * Math.pow(along, 1.15)
+        sheet.globalAlpha = amount * strength * 1.05
+        const x = pose.x + Math.cos(pose.angle) * length * place
+        const y = pose.y + Math.sin(pose.angle) * length * place
+        sheet.drawImage(sprite, x - radius, y - radius)
+      }
+      sheet.globalAlpha = 1
+      sheet.globalCompositeOperation = previous
+    }
+
+    function mixColor(from, to, amount) {
+      return [
+        Math.round(from[0] + (to[0] - from[0]) * amount),
+        Math.round(from[1] + (to[1] - from[1]) * amount),
+        Math.round(from[2] + (to[2] - from[2]) * amount)
+      ]
+    }
+
+    function flowColor(distance, bands, phase) {
+      const palette = bands || rgbBands
+      const shift = phase == null ? cyclePhase : phase
+      let loop = distance * 2 - shift
+      loop = ((loop % 3) + 3) % 3
+      const index = Math.min(2, Math.floor(loop))
+      const span = loop - index
+      const eased = span * span * (3 - 2 * span)
+      return mixColor(palette[index], palette[(index + 1) % 3], eased)
+    }
+
+    function fireTrailSnapshot() {
+      if (!fireCycleOn) return fireStill
+      const marks = []
+      const count = 8
+      for (let index = 0; index <= count; index += 1) {
+        const place = -1 + (2 * index / count)
+        const center = Math.abs(place) < 0.08
+        marks.push({
+          place,
+          color: quantizeColor(flowColor(Math.abs(place), fireBands, firePhase)),
+          strength: center ? 1.6 : 1,
+          size: center ? 0.34 : 0.28
+        })
+      }
+      return marks
+    }
+
+    function drawFlow(x1, y1, x2, y2, near, far, alpha, lineWidth, bands, phase) {
+      if (Math.hypot(x2 - x1, y2 - y1) < 1) return
+      const gradient = sheet.createLinearGradient(x1, y1, x2, y2)
+      const stops = 12
+      for (let index = 0; index <= stops; index += 1) {
+        const along = index / stops
+        const color = flowColor(near + (far - near) * along, bands, phase)
+        gradient.addColorStop(along, "rgba(" + color[0] + "," + color[1] + "," + color[2] + "," + alpha + ")")
+      }
+      sheet.beginPath()
+      sheet.moveTo(x1, y1)
+      sheet.lineTo(x2, y2)
+      sheet.strokeStyle = gradient
+      sheet.lineWidth = lineWidth
+      sheet.lineCap = "butt"
+      sheet.stroke()
+    }
+
+    function drawTube(centerX, centerY, angle, length, bands, alpha, lineWidth, gap, side, facing) {
+      const dx = Math.cos(angle) * length
+      const dy = Math.sin(angle) * length
+      const inner = gap
+      const face = facing == null ? (realtime ? realtime.facing : 1) : facing
+      const fireTube = bands === fireBands
+      const flowing = fireTube ? fireCycleOn : cycleOn && bands === rgbBands
+      const phase = fireTube ? firePhase : cyclePhase
+      function strokeHalf(x1, y1, x2, y2) {
+        if (flowing) drawFlow(x1, y1, x2, y2, inner, 1, alpha, lineWidth, bands, phase)
+        else drawBands(x1, y1, x2, y2, bands, alpha, lineWidth)
+      }
+      if (side == null || lightIsForward(angle, 1, face) === side) {
+        strokeHalf(centerX + dx * inner, centerY + dy * inner, centerX + dx, centerY + dy)
+      }
+      if (side == null || lightIsForward(angle, -1, face) === side) {
+        strokeHalf(centerX - dx * inner, centerY - dy * inner, centerX - dx, centerY - dy)
+      }
+    }
+
+    function drawGrip(x, y, scale) {
+      const radius = 5.2 * scale
+      const glow = context.createRadialGradient(x, y, 0, x, y, radius)
+      glow.addColorStop(0, "rgba(255, 252, 244, 1)")
+      glow.addColorStop(0.45, "rgba(255, 220, 160, 1)")
+      glow.addColorStop(0.7, "rgba(255, 120, 48, 0.47)")
+      glow.addColorStop(1, "rgba(255, 48, 36, 0)")
+      context.save()
+      context.globalCompositeOperation = "lighter"
+      context.fillStyle = glow
+      context.beginPath()
+      context.arc(x, y, radius, 0, Math.PI * 2)
+      context.fill()
+      context.restore()
+    }
+
+    function tipAt(pose, place) {
+      const reach = (pose.length || 0) * place
+      return {
+        x: pose.handX + Math.cos(pose.angle) * reach,
+        y: pose.handY + Math.sin(pose.angle) * reach
+      }
+    }
+
+    function strokeRibbon(ink, poses, forward) {
+      const place = 1
+      const bands = 8
+      const last = poses.length - 1
+      if (last < 1) return
+      function strokeSpan(start, end, along) {
+        if (end <= start) return
+        const reach = poses[end].length || 0
+        const wide = Math.max(7, reach * 0.46 * 0.9)
+        ink.beginPath()
+        const first = tipAt(poses[start], place)
+        ink.moveTo(first.x, first.y)
+        for (let index = start + 1; index <= end; index += 1) {
+          const point = tipAt(poses[index], place)
+          ink.lineTo(point.x, point.y)
+        }
+        ink.lineCap = "round"
+        ink.lineJoin = "round"
+        ink.lineWidth = wide * 1.65
+        ink.strokeStyle = "rgba(190, 58, 10, 0.22)"
+        ink.globalAlpha = (0.45 + 0.4 * along) * 0.855
+        ink.stroke()
+        ink.lineWidth = wide
+        ink.strokeStyle = "rgba(214, 72, 14, 0.5)"
+        ink.globalAlpha = (0.28 + 0.5 * along) * 0.855
+        ink.stroke()
+        ink.lineWidth = Math.max(3, wide * 0.32)
+        ink.strokeStyle = "rgba(255, 118, 28, 0.75)"
+        ink.globalAlpha = (0.2 + 0.42 * along) * 0.855
+        ink.stroke()
+      }
+      for (let band = 0; band < bands; band += 1) {
+        const start = Math.max(0, Math.floor(band / bands * last) - 2)
+        const end = Math.max(start + 1, Math.floor((band + 1) / bands * last))
+        const along = (band + 1) / bands
+        if (forward == null) {
+          strokeSpan(start, end, along)
+          continue
+        }
+        let run = null
+        for (let index = start; index <= end; index += 1) {
+          const pose = poses[index]
+          const match = lightIsForward(pose.angle, place, pose.facing || 1) === forward
+          if (match) {
+            if (run == null) run = index
+          } else if (run != null) {
+            strokeSpan(run, index - 1, along)
+            run = null
+          }
+        }
+        if (run != null) strokeSpan(run, end, along)
+      }
+    }
+
+    function barSprite(radius, color) {
+      const key = "bar:" + radius + ":" + color[0] + "," + color[1] + "," + color[2]
+      const cached = glowSprites.get(key)
+      if (cached) return cached
+      const size = radius * 2
+      const sprite = document.createElement("canvas")
+      sprite.width = size
+      sprite.height = size
+      const pen = sprite.getContext("2d")
+      const glow = pen.createRadialGradient(radius, radius, 0, radius, radius, radius)
+      const body = color[0] + "," + color[1] + "," + color[2]
+      glow.addColorStop(0, "rgba(" + body + ",0.62)")
+      glow.addColorStop(0.42, "rgba(" + body + ",0.28)")
+      glow.addColorStop(0.75, "rgba(" + body + ",0.08)")
+      glow.addColorStop(1, "rgba(" + body + ",0)")
+      pen.fillStyle = glow
+      pen.fillRect(0, 0, size, size)
+      glowSprites.set(key, sprite)
+      return sprite
+    }
+
+    function paintBar(ink, poses, forward) {
+      const live = fireAnimateTrail ? fireTrailSnapshot() : null
+      const last = poses.length - 1
+      for (let index = 1; index < poses.length; index += 2) {
+        const pose = poses[index]
+        const marks = live || pose.marks
+        const length = pose.length || 0
+        if (!marks || length <= 0) continue
+        const along = index / last
+        for (let mark = 0; mark < marks.length; mark += 1) {
+          const item = marks[mark]
+          if (forward != null && lightIsForward(pose.angle, item.place, pose.facing || 1) !== forward) continue
+          const spot = tipAt(pose, item.place)
+          const stamp = Math.max(7, Math.round(length * item.size * 0.9))
+          const sprite = barSprite(stamp, item.color)
+          ink.globalAlpha = (0.16 + 0.28 * along) * item.strength * 0.855
+          ink.drawImage(sprite, spot.x - stamp, spot.y - stamp)
+        }
+      }
+    }
+
+    function paintFire(poses, forward) {
+      if (poses.length < 2) return
+      const ink = firePen
+      const previous = ink.globalCompositeOperation
+      ink.globalCompositeOperation = "lighten"
+      ink.filter = "none"
+      if (poses[poses.length - 1].chain) strokeRibbon(ink, poses, forward)
+      else paintBar(ink, poses, forward)
+      ink.globalAlpha = 1
+      ink.globalCompositeOperation = previous
+    }
+
+    function drawLiveFire(handX, handY, spin, length) {
+      const radius = Math.max(1, length * 0.9)
+      const spread = Math.PI * 1.35
+      const wide = Math.max(7, length * 0.46 * 0.9)
+      context.save()
+      context.globalCompositeOperation = "lighten"
+      context.lineCap = "round"
+      context.beginPath()
+      context.arc(handX, handY, radius, spin, spin + spread)
+      context.lineWidth = wide * 1.65
+      context.strokeStyle = "rgba(190, 58, 10, " + (0.2 * 0.855) + ")"
+      context.stroke()
+      context.lineWidth = wide
+      context.strokeStyle = "rgba(214, 72, 14, " + (0.4 * 0.855) + ")"
+      context.stroke()
+      context.lineWidth = Math.max(3, wide * 0.32)
+      context.strokeStyle = "rgba(255, 118, 28, " + (0.65 * 0.855) + ")"
+      context.stroke()
+      context.restore()
+    }
+
+    function legFoot(phase, reach) {
+      const span = reach == null ? 1 : reach
+      const travel = 26 * span
+      const kick = 11 * span
+      const turn = Math.PI * 2
+      const p = ((phase % turn) + turn) % turn
+      if (p < Math.PI) {
+        const t = p / Math.PI
+        return { x: -travel * 0.5 + t * travel, y: -Math.sin(t * Math.PI) * kick }
+      }
+      const t = (p - Math.PI) / Math.PI
+      return { x: travel * 0.5 - t * travel, y: 0 }
+    }
+
+    function traceFigure(cycle, s, pen, part, reach, lean, follow, hands, pull) {
+      const ink = pen || context
+      const span = reach == null ? 1 : reach
+      const shift = lean || 0
+      const lift = follow || 0
+      const pullAmount = pull || 0
+      const bothHands = hands && hands.length === 2
+      const shaped = bothHands || pullAmount > 0
+      const cave = shaped ? pullAmount * 8 : 0
+      const rise = bodyRise(cycle)
+      const hipX = shift
+      const hipY = -22 - rise + (shaped ? pullAmount * 2.4 : 0)
+      const chestX = 2 + shift * 0.4 + lift * 0.12 - (shaped ? pullAmount * 1.6 : 0)
+      const chestY = -39 - rise - lift * 0.45 + cave
+      const headX = 3 + shift * 0.3 - (shaped ? pullAmount * 1.4 : 0)
+      const headY = -44 - rise - lift * 0.25 + (shaped ? pullAmount * 4.2 : 0)
+      const footA = legFoot(cycle, span)
+      const footB = legFoot(cycle + Math.PI, span)
+      const armSwing = Math.sin(cycle) * 8 * span + shift * 1.1 - lift * 0.55
+      const headOnly = part === "head" || part === "headBack"
+      const bodyOnly = part === "body"
+      if (!bodyOnly) {
+        ink.beginPath()
+        if (part === "head" || part === "headBack") {
+          const start = part === "headBack" ? -2.2 : -1.4
+          const end = part === "headBack" ? 1.85 : 1.2
+          ink.arc(headX * s, headY * s, 6.1 * s, start, end)
+        } else ink.arc(headX * s, headY * s, 6.1 * s, 0, Math.PI * 2)
+        if (part === "head" || part === "headBack") ink.stroke()
+        else ink.fill()
+      }
+      if (!headOnly) {
+        ink.beginPath()
+        ink.moveTo(chestX * s, chestY * s)
+        ink.lineTo(hipX * s, hipY * s)
+        strokeLeg(hipX, hipY, footA, s, ink)
+        strokeLeg(hipX, hipY, footB, s, ink)
+        function reachWithElbow(fromX, fromY, to) {
+          const dx = to.x - fromX
+          const dy = to.y - fromY
+          const len = Math.hypot(dx, dy) || 1
+          const bow = 2.4 + pullAmount * 2.8
+          let sideX = -dy / len
+          let sideY = dx / len
+          if (sideX > 0) {
+            sideX = -sideX
+            sideY = -sideY
+          }
+          const midX = (fromX + to.x) * 0.5
+          const midY = (fromY + to.y) * 0.5
+          ink.lineTo((midX + sideX * bow) * s, (midY + sideY * bow) * s)
+          ink.lineTo(to.x * s, to.y * s)
+        }
+        if (bothHands) {
+          const shoulderY = -36 - rise + cave * 0.5
+          ink.moveTo(hipX * s, shoulderY * s)
+          reachWithElbow(hipX, shoulderY, hands[0])
+          ink.moveTo(chestX * s, shoulderY * s)
+          reachWithElbow(chestX, shoulderY, hands[1])
+        } else if (shaped) {
+          const shoulderY = -36 - rise + cave * 0.35
+          ink.moveTo(hipX * s, shoulderY * s)
+          reachWithElbow(hipX, shoulderY, { x: -9 + armSwing, y: -24 - rise + lift * 0.85 })
+          ink.moveTo(chestX * s, shoulderY * s)
+          reachWithElbow(chestX, shoulderY, { x: 14 + shift * 0.25, y: -52 - rise - lift })
+        } else {
+          ink.moveTo(hipX * s, (-36 - rise) * s)
+          ink.lineTo((-9 + armSwing) * s, (-24 - rise + lift * 0.85) * s)
+          ink.moveTo(chestX * s, (-36 - rise - lift * 0.35) * s)
+          ink.lineTo((14 + shift * 0.25) * s, (-52 - rise - lift) * s)
+        }
+        ink.stroke()
+      }
+    }
+
+    function drawFigure(feetX, feetY, facing, scale, phase, ink, reach, lean, follow, hands, pull) {
+      const cycle = phase || 0
+      const rise = bodyRise(cycle)
+      const s = scale
+      context.save()
+      context.translate(feetX, feetY)
+      context.scale(facing, 1)
+      let color = ink || silhouette
+      if (ink === "fire") {
+        const handX = 14 * s
+        const handY = (-52 - rise) * s
+        const glow = context.createRadialGradient(handX, handY, 2 * s, handX, handY, 48 * s)
+        glow.addColorStop(0, "rgb(255, 196, 120)")
+        glow.addColorStop(0.25, "rgb(210, 108, 52)")
+        glow.addColorStop(0.55, "rgb(140, 68, 34)")
+        glow.addColorStop(1, "rgb(64, 32, 20)")
+        color = glow
+      }
+      context.fillStyle = color
+      context.strokeStyle = color
+      context.lineCap = "round"
+      context.lineJoin = "round"
+      context.lineWidth = 7.2 * s
+      traceFigure(cycle, s, null, null, reach, lean, follow, hands, pull)
+      context.restore()
+    }
+
+    function drawEdgedFigure(feetX, feetY, facing, scale, phase, fire, reach, lean, follow, hands, pull) {
+      const cycle = phase || 0
+      const s = scale
+      const w = Math.max(2, Math.ceil(110 * s))
+      const h = Math.max(2, Math.ceil(130 * s))
+      if (figureCanvas.width !== w || figureCanvas.height !== h) {
+        figureCanvas.width = w
+        figureCanvas.height = h
+        lightCanvas.width = w
+        lightCanvas.height = h
+        strokeCanvas.width = w
+        strokeCanvas.height = h
+      }
+      const pen = figurePen
+      pen.setTransform(1, 0, 0, 1, 0, 0)
+      pen.globalAlpha = 1
+      pen.globalCompositeOperation = "source-over"
+      pen.filter = "none"
+      pen.clearRect(0, 0, w, h)
+      lightPen.setTransform(1, 0, 0, 1, 0, 0)
+      lightPen.clearRect(0, 0, w, h)
+      const originX = w * 0.5
+      const originY = h * 0.78
+      pen.save()
+      pen.translate(originX, originY)
+      pen.scale(facing, 1)
+      pen.lineCap = "round"
+      pen.lineJoin = "round"
+      pen.lineWidth = 7.2 * s
+      pen.fillStyle = silhouette
+      pen.strokeStyle = silhouette
+      traceFigure(cycle, s, pen, null, reach, lean, follow, hands, pull)
+      pen.restore()
+
+      function keepBrighter() {
+        lightPen.save()
+        lightPen.setTransform(1, 0, 0, 1, 0, 0)
+        lightPen.globalCompositeOperation = "source-over"
+        lightPen.globalAlpha = 1
+        lightPen.filter = "none"
+        lightPen.drawImage(strokeCanvas, 0, 0)
+        lightPen.restore()
+      }
+
+      function edgeLight(part, shiftX, shiftY, width, blur, stops, alongHead) {
+        const ink = fire ? lightPen : strokePen
+        ink.setTransform(1, 0, 0, 1, 0, 0)
+        ink.globalAlpha = 1
+        ink.globalCompositeOperation = fire ? "lighten" : "source-over"
+        ink.filter = "none"
+        if (!fire) ink.clearRect(0, 0, w, h)
+        ink.save()
+        ink.filter = "blur(" + blur + "px)"
+        ink.translate(originX, originY)
+        ink.scale(facing, 1)
+        ink.translate(shiftX, shiftY)
+        ink.lineCap = "round"
+        ink.lineJoin = "round"
+        ink.lineWidth = width
+        const riseNow = bodyRise(cycle)
+        const falloff = alongHead
+          ? ink.createLinearGradient(12 * s, (-44 - riseNow) * s, -8 * s, (-44 - riseNow) * s)
+          : ink.createLinearGradient(10 * s, -62 * s, 2 * s, 8 * s)
+        for (let index = 0; index < stops.length; index += 1) {
+          falloff.addColorStop(stops[index][0], stops[index][1])
+        }
+        ink.strokeStyle = falloff
+        ink.fillStyle = falloff
+        traceFigure(cycle, s, ink, part, reach, lean, follow, hands, pull)
+        ink.restore()
+        ink.filter = "none"
+        ink.globalCompositeOperation = "source-over"
+        if (!fire) keepBrighter()
+      }
+
+      const spill = fire
+        ? [
+          [0, "rgba(255, 176, 72, 0.34)"],
+          [0.24, "rgba(255, 140, 48, 0.22)"],
+          [0.48, "rgba(210, 90, 24, 0.12)"],
+          [0.72, "rgba(170, 58, 14, 0.05)"],
+          [1, "rgba(140, 40, 8, 0)"]
+        ]
+        : [
+          [0, "rgba(255, 255, 255, 0.34)"],
+          [0.24, "rgba(255, 255, 255, 0.22)"],
+          [0.48, "rgba(255, 255, 255, 0.12)"],
+          [0.72, "rgba(255, 255, 255, 0.05)"],
+          [1, "rgba(255, 255, 255, 0)"]
+        ]
+      const hot = fire
+        ? [
+          [0, "rgba(255, 186, 80, 1)"],
+          [0.18, "rgba(255, 140, 40, 0.8)"],
+          [0.4, "rgba(230, 96, 20, 0.48)"],
+          [0.62, "rgba(190, 64, 14, 0.24)"],
+          [0.84, "rgba(150, 44, 10, 0.08)"],
+          [1, "rgba(120, 32, 8, 0)"]
+        ]
+        : [
+          [0, "rgba(255, 255, 255, 1)"],
+          [0.18, "rgba(255, 255, 255, 0.8)"],
+          [0.4, "rgba(255, 255, 255, 0.48)"],
+          [0.62, "rgba(255, 255, 255, 0.24)"],
+          [0.84, "rgba(255, 255, 255, 0.08)"],
+          [1, "rgba(255, 255, 255, 0)"]
+        ]
+      const headFeather = fire
+        ? [
+          [0, "rgba(255, 170, 70, 0.72)"],
+          [0.3, "rgba(240, 120, 36, 0.36)"],
+          [0.58, "rgba(200, 80, 18, 0.14)"],
+          [0.82, "rgba(160, 50, 12, 0.04)"],
+          [1, "rgba(120, 32, 8, 0)"]
+        ]
+        : [
+          [0, "rgba(255, 255, 255, 0.72)"],
+          [0.3, "rgba(255, 255, 255, 0.36)"],
+          [0.58, "rgba(255, 255, 255, 0.14)"],
+          [0.82, "rgba(255, 255, 255, 0.04)"],
+          [1, "rgba(255, 255, 255, 0)"]
+        ]
+      edgeLight("body", 2.7 * s, -0.2 * s, 2.8 * s, Math.max(2, Math.round(1.8 * s)), spill)
+      edgeLight("body", 3.55 * s, -0.35 * s, 2.3 * s, Math.max(1, Math.round(0.6 * s)), hot)
+      edgeLight("headBack", -1.1 * s, -0.15 * s, 4.8 * s, Math.max(3, Math.round(3.2 * s)), headFeather, true)
+      edgeLight("head", 0.5 * s, -0.2 * s, 2.2 * s, Math.max(2, Math.round(1.2 * s)), hot)
+      pen.globalCompositeOperation = "source-over"
+      pen.filter = "none"
+      pen.drawImage(lightCanvas, 0, 0)
+      context.drawImage(figureCanvas, feetX - originX, feetY - originY)
+    }
+
+    function strokeLeg(hipX, hipY, foot, scale, pen) {
+      const ink = pen || context
+      const kneeX = (hipX + foot.x) / 2
+      const kneeY = (hipY + foot.y) / 2 - 4
+      ink.moveTo(hipX * scale, hipY * scale)
+      ink.lineTo(kneeX * scale, kneeY * scale)
+      ink.lineTo(foot.x * scale, foot.y * scale)
+    }
+
+    function flameTip(handX, handY, angle, length) {
+      return {
+        x: handX + Math.cos(angle) * length,
+        y: handY + Math.sin(angle) * length
+      }
+    }
+
+    function drawFlame(x, y, scale, alpha) {
+      const radius = Math.max(1, 9 * scale)
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return
+      const glow = context.createRadialGradient(x, y, 0, x, y, radius)
+      glow.addColorStop(0, "rgba(255, 244, 214, " + alpha + ")")
+      glow.addColorStop(0.22, "rgba(255, 168, 36, " + (alpha * 0.85) + ")")
+      glow.addColorStop(0.5, "rgba(255, 72, 16, " + (alpha * 0.4) + ")")
+      glow.addColorStop(1, "rgba(255, 40, 8, 0)")
+      context.fillStyle = glow
+      context.beginPath()
+      context.arc(x, y, radius, 0, Math.PI * 2)
+      context.fill()
+    }
+
+
+    function drawSpin(handX, handY, spin, length, bands, lineWidth, side, facing) {
+      const ghosts = 4
+      const spread = spinTurn * 3
+      for (let index = ghosts; index >= 0; index -= 1) {
+        const angle = spin - spread * (index / ghosts)
+        const alpha = index === 0 ? 1 : 0.16 * (1 - index / ghosts)
+        drawTube(handX, handY, angle, length, bands, alpha, lineWidth, 0.08, side, facing)
+      }
+    }
+
+    function drawSpinPicture(handX, handY, spin, length, bands, lineWidth, side, facing) {
+      const copies = 12
+      const spread = Math.PI * 1.5
+      for (let index = copies; index >= 1; index -= 1) {
+        const along = 1 - index / copies
+        const angle = spin - spread * (index / copies)
+        const alpha = 0.05 + 0.28 * along
+        drawTube(handX, handY, angle, length, bands, alpha, lineWidth, 0, side, facing)
+      }
+      drawTube(handX, handY, spin, length, bands, 1, lineWidth, 0.08, side, facing)
+    }
+
+    function drawFastBodies(scale) {
+      const blur = Math.max(8, Math.round(9 * scale))
+      context.save()
+      context.filter = "blur(" + blur + "px)"
+      for (const person of fast) {
+        const poses = person.fire
+        const span = Math.min(poses.length, 10)
+        const count = Math.max(span, 1)
+        for (let index = 0; index < count; index += 1) {
+          const along = count === 1 ? 1 : index / (count - 1)
+          let x = person.x
+          let y = person.y
+          let facing = person.facing
+          let phase = person.phase
+          let scale = person.scale || figureScale(1.6)
+          if (span > 0) {
+            const pose = poses[poses.length - span + index]
+            x = pose.x
+            y = pose.y
+            facing = pose.facing
+            phase = pose.phase
+            if (pose.scale) scale = pose.scale
+          }
+          context.globalAlpha = (0.08 + 0.17 * along) * rush
+          drawFigure(x, y, facing, scale, phase, "fire")
+        }
+      }
+      context.globalAlpha = 1
+      context.restore()
+    }
+
+    function drawLedBody(scale) {
+      const poses = realtime.body
+      const span = Math.min(poses.length, 6)
+      const count = Math.max(span, 1)
+      for (let index = 0; index < count; index += 1) {
+        const along = count === 1 ? 1 : index / (count - 1)
+        let x = realtime.x
+        let y = realtime.feetY
+        let facing = realtime.facing
+        let phase = realtime.phase
+        let sway = realtime.sway || 0
+        let follow = realtime.follow || 0
+        let pull = realtime.pull || 0
+        let spin = realtime.spin
+        if (span > 0) {
+          const pose = poses[poses.length - span + index]
+          x = pose.x
+          y = pose.y
+          facing = pose.facing
+          phase = pose.phase
+          sway = pose.sway || 0
+          follow = pose.follow || 0
+          if (pose.pull != null) pull = pose.pull
+          if (pose.spin != null) spin = pose.spin
+        }
+        const hands = handsOnTube(spin, facing, sway, follow, phase)
+        context.globalAlpha = 0.14 + 0.4 * along
+        drawEdgedFigure(x, y, facing, scale, phase, false, null, sway, follow, hands, pull)
+      }
+      context.globalAlpha = 1
+    }
+
+    function drawOrbitter(person, pass) {
+      const scale = person.scale || figureScale(1.6)
+      const poses = person.fire
+      const solid = 1 - rush
+      const veil = pass === "veil" ? 0.19 : 1
+      const drawBody = pass == null || pass === "behind" || pass === "veil"
+      const drawProp = pass == null || pass === "behind" || pass === "ahead"
+      const feetY = person.y - (person.lift || 0)
+      if (drawBody) {
+        if (pass !== "veil" && rush === 0) {
+          const echo = poses.length - 36
+          if (echo >= 0) {
+            context.globalAlpha = 0.22
+            drawFigure(poses[echo].x, poses[echo].y, poses[echo].facing, poses[echo].scale || scale, poses[echo].phase)
+            context.globalAlpha = 1
+          }
+        }
+        const stride = person.stride == null ? 1 : person.stride
+        const bare = solid * (1 - halfStep)
+        if (bare > 0.02) {
+          context.globalAlpha = bare * veil
+          drawFigure(person.x, feetY, person.facing, scale, person.phase, null, stride, person.lean, null, null, person.pull)
+          context.globalAlpha = 1
+        }
+        if (halfStep > 0.02) {
+          context.globalAlpha = halfStep * veil
+          drawEdgedFigure(person.x, feetY, person.facing, scale, person.phase, true, stride, person.lean, null, null, person.pull)
+          context.globalAlpha = 1
+        }
+      }
+      if (!drawProp) return
+      const hand = handOf(person.x, feetY, person.facing, scale, person.phase, person.lean)
+      const side = pass === "behind" ? false : pass === "ahead" ? true : null
+      if (person.chain) {
+        if (side !== false) drawLiveFire(hand.x, hand.y, person.spin, 22 * scale)
+      } else {
+        const fireLength = 24 * scale * 0.9
+        const fireWidth = 2.8 * scale * 0.9
+        context.save()
+        context.globalAlpha *= 0.855
+        if (held) drawSpin(hand.x, hand.y, person.spin, fireLength, fireBands, fireWidth, side, person.facing)
+        else drawSpinPicture(hand.x, hand.y, person.spin, fireLength, fireBands, fireWidth, side, person.facing)
+        context.restore()
+      }
+    }
+
+    function draw() {
+      drawSky()
+      const liveScale = figureScale(1.68)
+      const ledLength = 30 * liveScale
+
+      function paintLedRibbon(forward) {
+        if (!realtime || realtime.tube.length < 2) return
+        const bloom = Math.max(6, Math.round(4.5 * liveScale))
+        sheet = trailContext
+        if (!animateTrail) {
+          paintStoredTrail(realtime.tube, ledLength, bloom, forward)
+          sheet = context
+          return
+        }
+        const marks = []
+        if (cycleOn) {
+          const count = 8
+          for (let index = 0; index <= count; index += 1) {
+            const place = -1 + (2 * index / count)
+            const color = flowColor(Math.abs(place)).map((channel) => Math.round(channel / 8) * 8)
+            marks.push({
+              place,
+              color,
+              strength: 1,
+              feather: Math.abs(place) < 0.08
+            })
+          }
+        } else {
+          marks.push(
+            { place: -0.92, color: rgbBands[2], strength: 1, feather: false },
+            { place: 0.92, color: rgbBands[2], strength: 1, feather: false },
+            { place: -0.5, color: rgbBands[1], strength: 1.35, feather: false },
+            { place: 0.5, color: rgbBands[1], strength: 1.35, feather: false },
+            { place: 0, color: rgbBands[0], strength: 1, feather: true }
+          )
+        }
+        for (const mark of marks) {
+          const radius = mark.feather ? Math.round(bloom * 1.8) : bloom
+          paintTrail(realtime.tube, ledLength, mark.place, mark.color, radius, mark.strength, mark.feather, forward)
+        }
+        sheet = context
+      }
+
+      function showLedRibbon() {
+        context.drawImage(trailCanvas, 0, 0, width, height)
+      }
+
+      function drawLedTube(side) {
+        if (!realtime || !realtime.hand) return
+        if (held) drawSpin(realtime.hand.x, realtime.hand.y, realtime.spin, ledLength, rgbBands, 3.1 * liveScale, side)
+        else drawSpinPicture(realtime.hand.x, realtime.hand.y, realtime.spin, ledLength, rgbBands, 3.1 * liveScale, side)
+      }
+
+      trailContext.clearRect(0, 0, width, height)
+      trailContext.globalCompositeOperation = "source-over"
+      paintLedRibbon(false)
+      showLedRibbon()
+
+      if (rush > 0) drawFastBodies(figureScale(1.6))
+
+      const ground = realtime ? realtime.feetY : height * 0.66
+      const farther = []
+      const nearer = []
+      for (const person of fast) {
+        if (person.y > ground) nearer.push(person)
+        else farther.push(person)
+      }
+      farther.sort((a, b) => a.y - b.y)
+      nearer.sort((a, b) => a.y - b.y)
+      const slowCover = halfStep > 0.02 && rush === 0
+
+      function showCrowdFire() {
+        context.drawImage(fireCanvas, 0, 0, width, height)
+      }
+
+      function paintCrowdFire(people, forward) {
+        firePen.setTransform(glowRatio, 0, 0, glowRatio, 0, 0)
+        firePen.clearRect(0, 0, width, height)
+        let any = false
+        for (const person of people) {
+          if (person.fire.length > 1) {
+            paintFire(person.fire, forward)
+            any = true
+          }
+        }
+        if (any) showCrowdFire()
+      }
+
+      function coverWithFire(people) {
+        paintCrowdFire(people, false)
+        for (const person of people) drawOrbitter(person, "behind")
+        paintCrowdFire(people, true)
+        for (const person of people) drawOrbitter(person, "ahead")
+        for (const person of people) drawOrbitter(person, "veil")
+      }
+
+      if (slowCover) {
+        coverWithFire(farther)
+        coverWithFire(nearer)
+      } else {
+        for (const person of farther) drawOrbitter(person)
+        firePen.setTransform(glowRatio, 0, 0, glowRatio, 0, 0)
+        firePen.clearRect(0, 0, width, height)
+        for (const person of fast) {
+          if (person.fire.length > 1) paintFire(person.fire)
+        }
+        showCrowdFire()
+        for (const person of nearer) drawOrbitter(person)
+      }
+
+      if (realtime && realtime.hand) {
+        const ledFast = held && pressCount % 2 === 1
+        const sway = realtime.sway || 0
+        const follow = realtime.follow || 0
+        const pull = realtime.pull || 0
+        const hands = handsOnTube(realtime.spin, realtime.facing, sway, follow, realtime.phase)
+        drawLedTube(false)
+        if (ledFast) drawLedBody(liveScale)
+        else if (held) drawEdgedFigure(realtime.x, realtime.feetY, realtime.facing, liveScale, realtime.phase, false, null, sway, follow, hands, pull)
+        else drawFigure(realtime.x, realtime.feetY, realtime.facing, liveScale, realtime.phase, null, null, sway, follow, hands, pull)
+        trailContext.clearRect(0, 0, width, height)
+        paintLedRibbon(true)
+        showLedRibbon()
+        drawLedTube(true)
+        context.save()
+        context.globalAlpha = 0.19
+        if (held) drawEdgedFigure(realtime.x, realtime.feetY, realtime.facing, liveScale, realtime.phase, false, null, sway, follow, hands, pull)
+        else drawFigure(realtime.x, realtime.feetY, realtime.facing, liveScale, realtime.phase, null, null, sway, follow, hands, pull)
+        context.restore()
+        drawGrip(realtime.hand.x, realtime.hand.y, liveScale)
+      }
+    }
+
+    function frame(stamp) {
+      if (lastStamp === 0) lastStamp = stamp
+      let elapsed = stamp - lastStamp
+      lastStamp = stamp
+      if (elapsed > 100) elapsed = 100
+      leftover += elapsed
+      const slice = 1000 / 30
+      while (leftover >= slice) {
+        step()
+        leftover -= slice
+      }
+      draw()
+      requestAnimationFrame(frame)
+    }
+
+    function setHeld(next) {
+      if (next && !held) pressCount += 1
+      held = next
+      holdButton.setAttribute("aria-label", held ? "Holding" : "Hold")
+      holdButton.setAttribute("aria-pressed", held ? "true" : "false")
+    }
+
+    function pressStarted(event) {
+      pointers.add(event.pointerId)
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId)
+      } catch (error) {
+        // A press that cannot be captured still counts as held.
+      }
+      setHeld(true)
+    }
+
+    function pressEnded(event) {
+      if (event && event.pointerId != null) pointers.delete(event.pointerId)
+      if (touchHolding) return
+      setHeld(pointers.size > 0)
+    }
+
+    let touchHolding = false
+    let tap = null
+    let sliding = null
+
+    const cycleButton = document.getElementById("cycle")
+    const cycleDurationInput = document.getElementById("cycle-duration")
+
+    function showCycleDuration() {
+      const span = (Number(cycleDurationInput.value) - 1) / 4
+      cycleDurationInput.style.setProperty("--fill", (span * 100) + "%")
+    }
+
+    cycleDurationInput.addEventListener("input", () => {
+      const next = Number(cycleDurationInput.value)
+      if (!Number.isFinite(next)) return
+      cycleDuration = next
+      showCycleDuration()
+    })
+    showCycleDuration()
+
+    const fireDurationInput = document.getElementById("fire-duration")
+
+    function showFireDuration() {
+      const span = (Number(fireDurationInput.value) - 1) / 4
+      fireDurationInput.style.setProperty("--fill", (span * 100) + "%")
+    }
+
+    fireDurationInput.addEventListener("input", () => {
+      const next = Number(fireDurationInput.value)
+      if (!Number.isFinite(next)) return
+      fireCycleDuration = next
+      showFireDuration()
+    })
+    showFireDuration()
+
+    function setCycle(next) {
+      cycleOn = next
+      if (!cycleOn) cyclePhase = 0
+      cycleButton.setAttribute("aria-checked", cycleOn ? "true" : "false")
+    }
+
+    cycleButton.addEventListener("click", () => setCycle(!cycleOn))
+
+    const trailButton = document.getElementById("trail")
+
+    function setAnimateTrail(next) {
+      animateTrail = next
+      trailButton.setAttribute("aria-checked", animateTrail ? "true" : "false")
+    }
+
+    trailButton.addEventListener("click", () => setAnimateTrail(!animateTrail))
+
+    const fireCycleButton = document.getElementById("fire-cycle")
+    const fireTrailButton = document.getElementById("fire-trail")
+
+    function setFireCycle(next) {
+      fireCycleOn = next
+      if (!fireCycleOn) firePhase = 0
+      fireCycleButton.setAttribute("aria-checked", fireCycleOn ? "true" : "false")
+    }
+
+    function setFireAnimateTrail(next) {
+      fireAnimateTrail = next
+      fireTrailButton.setAttribute("aria-checked", fireAnimateTrail ? "true" : "false")
+    }
+
+    fireCycleButton.addEventListener("click", () => setFireCycle(!fireCycleOn))
+    fireTrailButton.addEventListener("click", () => setFireAnimateTrail(!fireAnimateTrail))
+
+    document.querySelector(".color-choices").addEventListener("change", (event) => {
+      const input = event.target
+      const place = Number(input.closest("fieldset").dataset.place)
+      const choice = colorChoices[input.value]
+      if (!choice || Number.isNaN(place)) return
+      rgbBands[place] = choice.slice()
+    })
+
+    holdButton.addEventListener("pointerdown", (event) => {
+      event.preventDefault()
+      pressStarted(event)
+    })
+    function fingersLifted(event) {
+      if (event.touches.length > 0 || touchHolding) return
+      pointers.clear()
+      setHeld(false)
+    }
+
+    function rangeFromTouch(input, clientX) {
+      const rect = input.getBoundingClientRect()
+      if (rect.width <= 0) return
+      const min = Number(input.min)
+      const max = Number(input.max)
+      const step = Number(input.step) || 1
+      const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
+      const raw = min + ratio * (max - min)
+      const stepped = Math.round((raw - min) / step) * step + min
+      const next = Math.min(max, Math.max(min, stepped))
+      input.value = String(next)
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    }
+
+    document.addEventListener("touchstart", (event) => {
+      event.preventDefault()
+      const touch = event.changedTouches[0]
+      const range = event.target.closest("input[type=range]")
+      if (range) {
+        sliding = range
+        tap = null
+        rangeFromTouch(range, touch.clientX)
+        return
+      }
+      sliding = null
+      if (event.target.closest("#hold")) {
+        touchHolding = true
+        setHeld(true)
+        tap = null
+        return
+      }
+      tap = { x: touch.clientX, y: touch.clientY, t: Date.now(), target: event.target }
+    }, { capture: true, passive: false })
+
+    document.addEventListener("touchmove", (event) => {
+      if (!sliding) return
+      event.preventDefault()
+      rangeFromTouch(sliding, event.changedTouches[0].clientX)
+    }, { capture: true, passive: false })
+
+    document.addEventListener("touchend", (event) => {
+      sliding = null
+      if (touchHolding && event.touches.length === 0) {
+        touchHolding = false
+        pointers.clear()
+        setHeld(false)
+      }
+      if (!tap) return
+      const touch = event.changedTouches[0]
+      const start = tap
+      tap = null
+      if (!touch || Date.now() - start.t > 700) return
+      if (Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > 16) return
+      const control = start.target.closest("button, label")
+      if (!control || control.id === "hold") return
+      control.click()
+    }, { capture: true, passive: false })
+
+    document.addEventListener("touchcancel", () => {
+      sliding = null
+      tap = null
+      if (!touchHolding) return
+      touchHolding = false
+      pointers.clear()
+      setHeld(false)
+    }, { capture: true, passive: false })
+
+    document.addEventListener("gesturestart", (event) => event.preventDefault())
+
+    window.addEventListener("pointerup", pressEnded)
+    window.addEventListener("pointercancel", pressEnded)
+    window.addEventListener("touchend", fingersLifted)
+    window.addEventListener("touchcancel", fingersLifted)
+    holdButton.addEventListener("lostpointercapture", pressEnded)
+    document.addEventListener("selectstart", (event) => event.preventDefault(), true)
+    document.addEventListener("contextmenu", (event) => event.preventDefault(), true)
+    document.addEventListener("selectionchange", () => {
+      const selection = window.getSelection()
+      if (!selection || selection.isCollapsed) return
+      selection.removeAllRanges()
+    })
+    holdButton.addEventListener("keydown", (event) => {
+      if (event.repeat) return
+      if (event.key === " " || event.key === "Enter") {
+        event.preventDefault()
+        setHeld(true)
+      }
+    })
+    holdButton.addEventListener("keyup", (event) => {
+      if (event.key === " " || event.key === "Enter") setHeld(pointers.size > 0)
+    })
+    holdButton.addEventListener("blur", () => {
+      if (pointers.size === 0) setHeld(false)
+    })
+    window.addEventListener("blur", () => {
+      pointers.clear()
+      setHeld(false)
+    })
+
+    window.addEventListener("resize", fit)
+    fit()
+    requestAnimationFrame(frame)
+  </script>
+</body>
+</html>
